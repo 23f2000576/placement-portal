@@ -1,5 +1,6 @@
 from app import create_app, db
 from app.models import User
+from app.utils.security import hash_password
 
 app = create_app()
 
@@ -10,7 +11,7 @@ with app.app_context():
         admin = User(
             name="Admin",
             email="admin@ppa.com",
-            password="admin123",
+            password=hash_password("admin123"),
             role="ADMIN"
         )
         db.session.add(admin)
