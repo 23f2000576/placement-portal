@@ -25,20 +25,62 @@ def admin_required():
 # =====================================================
 @admin_bp.route("/dashboard", methods=["GET"])
 @jwt_required()
-def dashboard():
-    if not admin_required():
-        return jsonify({"error": "Admin only"}), 403
+def admin_dashboard():
 
-    data = {
-        "total_students": StudentProfile.query.count(),
-        "total_companies": CompanyProfile.query.count(),
-        "total_drives": PlacementDrive.query.count(),
-        "total_applications": Application.query.count()
-    }
+    companies = CompanyProfile.query.all()
+    students = StudentProfile.query.all()
+    drives = PlacementDrive.query.filter_by(status="Upcoming").all()
+    applications = Application.query.all()
 
-    return jsonify(data)
+    companies_data = []
 
+    for c in companies:
+        companies_data.append({
+            "id": c.id,
+            "name": c.company_name,
+            "blacklisted": c.is_blacklisted
+        })
 
+    students_data = []
+
+    for s in students:
+        user = User.query.get(s.user_id)
+
+        students_data.append({
+            "id": s.id,
+            "name": user.name if user else "Unknown",
+            "blacklisted": user.is_blacklisted if user else False
+        })
+
+    drives_data = []
+
+    for d in drives:
+        drives_data.append({
+            "id": d.id,
+            "title": d.title
+        })
+
+    applications_data = []
+
+    for a in applications:
+
+        student = StudentProfile.query.get(a.student_id)
+        student_user = User.query.get(student.user_id) if student else None
+
+        drive = PlacementDrive.query.get(a.drive_id)
+
+        applications_data.append({
+            "id": a.id,
+            "student": student_user.name if student_user else "Unknown",
+            "drive": drive.title if drive else "Unknown"
+        })
+
+    return jsonify({
+        "companies": companies_data,
+        "students": students_data,
+        "drives": drives_data,
+        "applications": applications_data
+    })
 # =====================================================
 # STUDENTS
 # =====================================================
