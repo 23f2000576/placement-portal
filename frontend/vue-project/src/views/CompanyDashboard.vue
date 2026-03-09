@@ -1,9 +1,151 @@
+<script setup>
+
+import { ref, onMounted } from "vue"
+import { useRouter } from "vue-router"
+import api from "../api/api"
+import Nav from "../components/Nav.vue"
+
+const router = useRouter()
+
+const drives = ref([])
+const upcomingDrives = ref([])
+const closedDrives = ref([])
+
+const showCreateModal = ref(false)
+const showApplicationsModal = ref(false)
+const showReviewModal = ref(false)
+
+const applications = ref([])
+const selectedDrive = ref(null)
+const selectedApplication = ref(null)
+
+const selectedStatus = ref("")
+
+const title = ref("")
+const location = ref("")
+const salary = ref("")
+const description = ref("")
+const deadline = ref("")
+
+
+
+const logout = () => {
+
+localStorage.removeItem("token")
+router.push("/login")
+
+}
+
+
+
+const loadDrives = async () => {
+
+const res = await api.get("/company/drives")
+
+drives.value = res.data
+
+upcomingDrives.value = drives.value.filter(d => d.status !== "Closed")
+closedDrives.value = drives.value.filter(d => d.status === "Closed")
+
+}
+
+
+
+const createDrive = async () => {
+
+await api.post("/company/create-drive",{
+
+title:title.value,
+location:location.value,
+salary:salary.value,
+description:description.value,
+deadline:deadline.value
+
+})
+
+showCreateModal.value=false
+
+loadDrives()
+
+}
+
+
+
+const completeDrive = async (id)=>{
+
+await api.put(`/company/drive/${id}/complete`)
+
+loadDrives()
+
+}
+
+
+
+const viewDetails = async (driveId)=>{
+
+selectedDrive.value=driveId
+
+const res = await api.get(`/company/drive/${driveId}/applications`)
+
+applications.value=res.data
+
+showApplicationsModal.value=true
+
+}
+
+
+
+const reviewApplication = (app)=>{
+
+selectedApplication.value = app
+
+selectedStatus.value = app.status
+
+showReviewModal.value = true
+
+}
+
+
+
+const saveStatus = async () => {
+
+await api.put(`/company/application/${selectedApplication.value.application_id}/status`,{
+
+status:selectedStatus.value
+
+})
+
+showReviewModal.value=false
+
+viewDetails(selectedDrive.value)
+
+}
+
+
+
+onMounted(()=>{
+
+const token = localStorage.getItem("token")
+
+if(!token){
+router.push("/login")
+return
+}
+
+loadDrives()
+
+})
+
+</script>
+
+
+
 <template>
 
-<!-- NAVBAR -->
-<Nav />
+<Nav/>
 
 <div class="min-h-screen bg-[#FAF7F2] p-10">
+
 
 <!-- HEADER -->
 
@@ -32,6 +174,7 @@ Logout
 </div>
 
 </div>
+
 
 
 <!-- UPCOMING DRIVES -->
@@ -88,6 +231,7 @@ mark as complete
 </table>
 
 </div>
+
 
 
 <!-- CLOSED DRIVES -->
@@ -176,7 +320,7 @@ Save
 
 
 
-<!-- APPLICATIONS POPUP -->
+<!-- APPLICATIONS LIST MODAL -->
 
 <div v-if="showApplicationsModal" class="fixed inset-0 bg-black/40 flex items-center justify-center">
 
@@ -227,6 +371,70 @@ review application
 @click="showApplicationsModal=false"
 class="px-3 py-1 bg-green-500 text-white rounded"
 >
+Close
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- REVIEW APPLICATION MODAL -->
+
+<div v-if="showReviewModal" class="fixed inset-0 bg-black/40 flex items-center justify-center">
+
+<div class="bg-white p-6 rounded w-[500px]">
+
+<h2 class="text-xl font-bold mb-4">
+Student Application
+</h2>
+
+<p><b>Name:</b> {{ selectedApplication.student_name }}</p>
+<p><b>Branch:</b> {{ selectedApplication.branch }}</p>
+<p><b>CGPA:</b> {{ selectedApplication.cgpa }}</p>
+
+<div class="mt-4">
+
+<a
+:href="'http://127.0.0.1:5000/'+selectedApplication.resume"
+target="_blank"
+class="bg-blue-100 text-blue-700 px-3 py-1 rounded"
+>
+View Resume
+</a>
+
+</div>
+
+
+<div class="mt-4">
+
+<select v-model="selectedStatus" class="border p-2 rounded">
+
+<option value="Shortlisted">Shortlist</option>
+<option value="Waiting">Waiting</option>
+<option value="Rejected">Reject</option>
+
+</select>
+
+</div>
+
+
+<div class="flex justify-between mt-6">
+
+<button
+@click="showReviewModal=false"
+class="bg-gray-200 px-3 py-1 rounded"
+>
+Back
+</button>
+
+<button
+@click="saveStatus"
+class="bg-green-500 text-white px-4 py-1 rounded"
+>
 Save
 </button>
 
@@ -237,133 +445,7 @@ Save
 </div>
 
 
+
 </div>
 
 </template>
-
-
-
-<script setup>
-
-import { ref, onMounted } from "vue"
-import { useRouter } from "vue-router"
-import api from "../api/api"
-import Nav from "../components/Nav.vue"
-
-const router = useRouter()
-
-const drives = ref([])
-const upcomingDrives = ref([])
-const closedDrives = ref([])
-
-const showCreateModal = ref(false)
-const showApplicationsModal = ref(false)
-
-const applications = ref([])
-const selectedDrive = ref(null)
-
-const title = ref("")
-const location = ref("")
-const salary = ref("")
-const description = ref("")
-const deadline = ref("")
-
-
-const logout = () => {
-
-localStorage.removeItem("token")
-
-router.push("/login")
-
-}
-
-
-
-const loadDrives = async () => {
-
-try {
-
-const res = await api.get("/company/drives")
-
-drives.value = res.data
-
-upcomingDrives.value = drives.value.filter(d => d.status !== "Closed")
-closedDrives.value = drives.value.filter(d => d.status === "Closed")
-
-}
-catch(err){
-
-console.log(err)
-
-}
-
-}
-
-
-
-const createDrive = async () => {
-
-await api.post("/company/create-drive",{
-
-title:title.value,
-location:location.value,
-salary:salary.value,
-description:description.value,
-deadline:deadline.value
-
-})
-
-showCreateModal.value=false
-
-loadDrives()
-
-}
-
-
-
-const completeDrive = async (id)=>{
-
-await api.put(`/company/drive/${id}/complete`)
-
-loadDrives()
-
-}
-
-
-
-const viewDetails = async (driveId)=>{
-
-selectedDrive.value=driveId
-
-const res = await api.get(`/company/drive/${driveId}/applications`)
-
-applications.value=res.data
-
-showApplicationsModal.value=true
-
-}
-
-
-
-const reviewApplication = (app)=>{
-
-console.log("Review Student",app)
-
-}
-
-
-
-onMounted(()=>{
-
-const token = localStorage.getItem("token")
-
-if(!token){
-router.push("/login")
-return
-}
-
-loadDrives()
-
-})
-
-</script>

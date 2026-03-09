@@ -12,13 +12,16 @@ from app import db
 admin_bp = Blueprint("admin", __name__)
 
 
-# ---------------- ROLE CHECK ----------------
 def admin_required():
-    identity = get_jwt_identity()
-    if identity["role"] != "ADMIN":
-        return False
-    return True
 
+    user_id = get_jwt_identity()
+
+    user = User.query.get(user_id)
+
+    if not user or user.role != "ADMIN":
+        return False
+
+    return True
 
 # =====================================================
 # DASHBOARD
@@ -300,7 +303,6 @@ def all_applications():
 
 # =====================================================
 # SEARCH (Bonus - good for viva)
-# =====================================================
 @admin_bp.route("/search", methods=["GET"])
 @jwt_required()
 def search_users():
@@ -322,3 +324,50 @@ def search_users():
         })
 
     return jsonify(result)
+# ================================
+# DRIVE DETAILS
+# ================================
+@admin_bp.route("/drive/<int:drive_id>", methods=["GET"])
+@jwt_required()
+def drive_details(drive_id):
+
+    if not admin_required():
+        return jsonify({"error": "Admin only"}), 403
+
+    drive = PlacementDrive.query.get_or_404(drive_id)
+
+    company = CompanyProfile.query.get(drive.company_id)
+
+    return jsonify({
+        "title": drive.title,
+        "description": drive.job_description,
+        "salary": drive.salary,
+        "location": drive.location,
+        "company": company.company_name if company else "Unknown"
+    })
+
+# ================================
+# APPLICATION DETAILS
+# ================================
+@admin_bp.route("/application/<int:app_id>", methods=["GET"])
+@jwt_required()
+def application_details(app_id):
+
+    if not admin_required():
+        return jsonify({"error": "Admin only"}), 403
+
+    app = Application.query.get_or_404(app_id)
+
+    student = StudentProfile.query.get(app.student_id)
+    user = User.query.get(student.user_id)
+
+    drive = PlacementDrive.query.get(app.drive_id)
+
+    return jsonify({
+        "student_name": user.name,
+        "branch": student.branch,
+        "cgpa": student.cgpa,
+        "resume": student.resume_path,
+        "drive": drive.title,
+        "job": drive.job_description
+    })

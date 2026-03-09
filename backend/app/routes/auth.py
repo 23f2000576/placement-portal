@@ -58,9 +58,13 @@ def signup():
         db.session.add(profile)
 
     elif role == "COMPANY":
-        print("Creating Company Profile")
-        profile = CompanyProfile(user_id=user.id)
-        db.session.add(profile)
+        profile = CompanyProfile(
+        user_id=user.id,
+        company_name=name,   # important
+        description=""
+    )
+
+    db.session.add(profile)
 
     db.session.commit()
 

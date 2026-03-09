@@ -5,12 +5,16 @@ from app import db
 
 company_bp = Blueprint("company", __name__)
 from datetime import datetime
-
 @company_bp.route("/create-drive", methods=["POST"])
 @jwt_required()
 def create_drive():
 
-    company_id = get_jwt_identity()
+    user_id = get_jwt_identity()
+
+    company = CompanyProfile.query.filter_by(user_id=user_id).first()
+
+    if not company:
+        return jsonify({"error": "Company profile not found"}), 404
 
     data = request.get_json()
 
@@ -19,7 +23,7 @@ def create_drive():
     ).date()
 
     drive = PlacementDrive(
-        company_id=company_id,
+        company_id=company.id,   # ✅ FIX HERE
         title=data["title"],
         job_description=data["description"],
         salary=data["salary"],
@@ -31,8 +35,7 @@ def create_drive():
     db.session.add(drive)
     db.session.commit()
 
-    return jsonify({"message": "Drive created"})
-# LIST DRIVES
+    return jsonify({"message": "Drive created"})# LIST DRIVES
 @company_bp.route("/drives", methods=["GET"])
 @jwt_required()
 def get_drives():
@@ -41,7 +44,9 @@ def get_drives():
 
     print("Company requesting drives:", user_id)
 
-    drives = PlacementDrive.query.filter_by(company_id=user_id).all()
+    company = CompanyProfile.query.filter_by(user_id=user_id).first()
+
+    drives = PlacementDrive.query.filter_by(company_id=company.id).all()
 
     result = []
 
@@ -68,7 +73,6 @@ def complete_drive(id):
     db.session.commit()
 
     return jsonify({"message": "Drive completed"})
-
 @company_bp.route("/drive/<int:drive_id>/applications", methods=["GET"])
 @jwt_required()
 def get_applications(drive_id):
@@ -79,19 +83,21 @@ def get_applications(drive_id):
 
     for app in applications:
 
-        student = StudentProfile.query.filter_by(id=app.student_id).first()
-        user = User.query.filter_by(id=student.user_id).first()
+        student = StudentProfile.query.get(app.student_id)
+        user = User.query.get(student.user_id)
+        drive = PlacementDrive.query.get(drive_id)
 
         result.append({
             "application_id": app.id,
             "student_name": user.name,
             "branch": student.branch,
             "cgpa": student.cgpa,
+            "resume": student.resume_path,   # ✅ Resume
+            "drive": drive.title,
             "status": app.status
         })
 
-    return jsonify(result)
-# UPDATE APPLICATION STATUS
+    return jsonify(result)# UPDATE APPLICATION STATUS
 @company_bp.route("/application/<int:id>/status", methods=["PUT"])
 @jwt_required()
 def update_status(id):
