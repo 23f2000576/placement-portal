@@ -13,6 +13,8 @@ const selectedDrive = ref(null)
 const showCompanyPopup = ref(false)
 const showDrivePopup = ref(false)
 
+const resumeFile = ref(null)
+const exporting = ref(false)
 
 /* ---------------- LOAD COMPANIES ---------------- */
 
@@ -20,11 +22,7 @@ const loadCompanies = async () => {
 
   try {
 
-    console.log("Calling API: /student/companies")
-
     const res = await api.get("/student/companies")
-
-    console.log("Companies API response:", res.data)
 
     companies.value = res.data
 
@@ -45,11 +43,7 @@ const viewCompany = async (company) => {
 
     selectedCompany.value = company
 
-    console.log("Calling API:", `/student/company/${company.id}/drives`)
-
     const res = await api.get(`/student/company/${company.id}/drives`)
-
-    console.log("Drives response:", res.data)
 
     drives.value = res.data
 
@@ -57,7 +51,7 @@ const viewCompany = async (company) => {
 
   } catch (err) {
 
-    console.error("Error loading drives", err)
+    console.error(err)
 
   }
 
@@ -75,13 +69,31 @@ const viewDrive = (drive) => {
 }
 
 
-/* ---------------- APPLY ---------------- */
+/* ---------------- HANDLE RESUME FILE ---------------- */
+
+const handleResume = (e)=>{
+
+  resumeFile.value = e.target.files[0]
+
+}
+
+
+/* ---------------- APPLY FOR DRIVE ---------------- */
 
 const apply = async () => {
 
   try {
 
-    await api.post(`/student/apply/${selectedDrive.value.id}`)
+    const formData = new FormData()
+
+    if(resumeFile.value){
+      formData.append("resume", resumeFile.value)
+    }
+
+    await api.post(
+      `/student/apply/${selectedDrive.value.id}`,
+      formData
+    )
 
     alert("Applied Successfully")
 
@@ -96,6 +108,32 @@ const apply = async () => {
 }
 
 
+/* ---------------- EXPORT APPLICATIONS ---------------- */
+
+const exportApplications = async () => {
+
+  try{
+
+    exporting.value = true
+
+    await api.post("/student/export")
+
+    alert("Export started. CSV will be emailed to you.")
+
+  }
+  catch(err){
+
+    console.error(err)
+
+  }
+  finally{
+
+    exporting.value = false
+
+  }
+
+}
+
 onMounted(loadCompanies)
 
 </script>
@@ -109,8 +147,25 @@ onMounted(loadCompanies)
 <div class="min-h-screen bg-[#FAF7F2] p-10">
 
 <h1 class="text-3xl font-bold text-[#4B2E2B] mb-6">
-Students Dashboard
+Student Dashboard
 </h1>
+
+
+<!-- EXPORT BUTTON -->
+
+<div class="mb-6">
+
+<button
+@click="exportApplications"
+class="bg-[#4B2E2B] text-white px-4 py-2 rounded shadow"
+>
+
+{{ exporting ? "Exporting..." : "Export My Applications (CSV)" }}
+
+</button>
+
+</div>
+
 
 
 <!-- ORGANIZATIONS -->
@@ -124,7 +179,7 @@ Organizations
 <div
 v-for="c in companies"
 :key="c.id"
-class="flex justify-between border p-3 mb-2 rounded"
+class="flex justify-between border p-3 mb-2 rounded hover:bg-gray-50"
 >
 
 <span class="font-medium">
@@ -135,7 +190,7 @@ class="flex justify-between border p-3 mb-2 rounded"
 @click="viewCompany(c)"
 class="bg-blue-200 px-3 py-1 rounded"
 >
-view details
+View Drives
 </button>
 
 </div>
@@ -150,7 +205,7 @@ view details
 
 <div v-if="showCompanyPopup" class="fixed inset-0 bg-black/40 flex justify-center items-center">
 
-<div class="bg-white p-6 w-[500px] rounded">
+<div class="bg-white p-6 w-[500px] rounded shadow-lg">
 
 <h2 class="text-xl font-bold mb-4">
 {{ selectedCompany.name }}
@@ -159,7 +214,7 @@ view details
 <div
 v-for="d in drives"
 :key="d.id"
-class="flex justify-between border p-3 mb-2"
+class="flex justify-between border p-3 mb-2 rounded"
 >
 
 <span>{{ d.title }}</span>
@@ -168,7 +223,7 @@ class="flex justify-between border p-3 mb-2"
 @click="viewDrive(d)"
 class="bg-blue-200 px-3 py-1 rounded"
 >
-view details
+View Details
 </button>
 
 </div>
@@ -190,7 +245,7 @@ Close
 
 <div v-if="showDrivePopup" class="fixed inset-0 bg-black/40 flex justify-center items-center">
 
-<div class="bg-white p-6 w-[450px] rounded">
+<div class="bg-white p-6 w-[450px] rounded shadow-lg">
 
 <h2 class="text-xl font-bold mb-3">
 {{ selectedDrive.title }}
@@ -207,6 +262,20 @@ Salary: {{ selectedDrive.salary }}
 <p>
 Location: {{ selectedDrive.location }}
 </p>
+
+
+<!-- RESUME UPLOAD -->
+
+<div class="mt-3">
+
+<input
+type="file"
+@change="handleResume"
+class="border p-2 w-full"
+/>
+
+</div>
+
 
 <div class="flex gap-3 mt-4">
 

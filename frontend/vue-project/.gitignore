@@ -37,3 +37,17 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# ==========================
+# Celery
+# ==========================
+
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
+
+# ==========================
+# Logs
+# ==========================
+
+*.log

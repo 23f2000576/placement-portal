@@ -9,7 +9,7 @@ from app.models import (
 )
 from werkzeug.utils import secure_filename
 import os
-
+from app.tasks import export_applications_csv
 student_bp = Blueprint("student", __name__)
 
 UPLOAD_FOLDER = "uploads/resumes"
@@ -220,3 +220,15 @@ def update_profile():
     db.session.commit()
 
     return jsonify({"message": "Profile updated"})
+
+@student_bp.route("/export", methods=["POST"])
+@jwt_required()
+def export_history():
+
+    user_id = get_jwt_identity()
+
+    student = StudentProfile.query.filter_by(user_id=user_id).first()
+
+    export_applications_csv.delay(student.id)
+
+    return jsonify({"message":"Export started. Email will be sent."})

@@ -371,3 +371,16 @@ def application_details(app_id):
         "drive": drive.title,
         "job": drive.job_description
     })
+
+@admin_bp.route("/generate-report", methods=["POST"])
+@jwt_required()
+def generate_report():
+
+    if not admin_required():
+        return jsonify({"error": "Admin only"}), 403
+
+    from app.tasks import generate_monthly_report
+
+    generate_monthly_report.delay()
+
+    return jsonify({"message": "Report generation started"})
